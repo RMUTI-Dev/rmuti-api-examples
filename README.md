@@ -21,10 +21,12 @@
   - [การตั้งค่า (Environment Variables)](#การตั้งค่า-environment-variables)
   - [Profile ที่ได้จาก Login](#profile-ที่ได้จาก-login)
   - [การเรียก RMUTI API ด้วย token](#การเรียก-rmuti-api-ด้วย-token)
+  - [เรียกจากหลังบ้านโดยไม่มีผู้ใช้ (Basic auth)](#เรียกจากหลังบ้านโดยไม่มีผู้ใช้-basic-auth)
   - [ข้อควรระวังด้านความปลอดภัย](#ข้อควรระวังด้านความปลอดภัย)
   - [แก้ปัญหาที่พบบ่อย](#แก้ปัญหาที่พบบ่อย)
   - [ขอบเขตของ repository นี้](#ขอบเขตของ-repository-นี้)
   - [การมีส่วนร่วมและติดต่อ](#การมีส่วนร่วมและติดต่อ)
+  - [License](#license)
 
 ## ภาพรวมการทำงาน
 
@@ -58,7 +60,7 @@ sequenceDiagram
 
 ## สิ่งที่ต้องเตรียม
 
-ไปที่ **[RMUTI Developer Portal (rmuti-portal.rmuti.ac.th)](https://rmuti-portal.rmuti.ac.th)** ซึ่งเป็นเว็บไซต์สำหรับผู้พัฒนา ใช้ขอใช้งาน RMUTI API และจัดการ key ต่าง ๆ แล้วตรวจสอบข้อมูลจำเป็นต่อไปนี้ที่นั่นก่อนเริ่มพัฒนา
+ไปที่ **[RMUTI Developer Portal (api-portal.rmuti.ac.th)](https://api-portal.rmuti.ac.th)** ซึ่งเป็นเว็บไซต์สำหรับผู้พัฒนา ใช้ขอใช้งาน RMUTI API และจัดการ key ต่าง ๆ แล้วตรวจสอบข้อมูลจำเป็นต่อไปนี้ที่นั่นก่อนเริ่มพัฒนา
 
 | รายการ | คำอธิบาย |
 |---|---|
@@ -161,7 +163,7 @@ Authorization: Bearer <access_token>
 
 ## เรียกจากหลังบ้านโดยไม่มีผู้ใช้ (Basic auth)
 
-สำหรับระบบหลังบ้านที่เรียก RMUTI API เองโดยไม่มีผู้ใช้ login (เช่น cron job, งานซิงค์ข้อมูล) RMUTI API รองรับ **HTTP Basic auth** โดยตรง — **ไม่ต้องผ่าน Keycloak และไม่ต้องขอ token** เพียงแนบ username / password ที่ได้จาก [RMUTI Developer Portal](https://rmuti-portal.rmuti.ac.th) ในทุก request
+สำหรับระบบหลังบ้านที่เรียก RMUTI API เองโดยไม่มีผู้ใช้ login (เช่น cron job, งานซิงค์ข้อมูล) RMUTI API รองรับ **HTTP Basic auth** โดยตรง — **ไม่ต้องผ่าน Keycloak และไม่ต้องขอ token** เพียงแนบ username / password ที่ได้จาก [RMUTI Developer Portal](https://api-portal.rmuti.ac.th) ในทุก request
 
 ```http
 GET /api/v4/... HTTP/1.1
@@ -224,7 +226,7 @@ node --env-file=.env nodejs.mjs     # หรือ python python.py / php php.ph
 
 พบปัญหาหรือมีข้อเสนอแนะ เปิด Issue หรือ Pull Request ได้ที่ repository นี้ ขั้นตอนการ contribute ของ organization ดูได้ที่ [RMUTI-Dev/.github](https://github.com/RMUTI-Dev/.github)
 
-การขอใช้งาน RMUTI API และจัดการ key ทำได้ที่ [RMUTI Developer Portal](https://rmuti-portal.rmuti.ac.th) หากต้องการความช่วยเหลือเพิ่มเติมเกี่ยวกับ client / สิทธิ์เข้าใช้ RMUTI Passport และ RMUTI API ให้ติดต่อ [ระบบแจ้งซ่อมด้านเทคโนโลยีสารสนเทศ](https://mis.rmuti.ac.th/oneservice) หรือ [อีเมล](mailto:mis@rmuti.ac.th)
+การขอใช้งาน RMUTI API และจัดการ key ทำได้ที่ [RMUTI Developer Portal](https://api-portal.rmuti.ac.th) หากต้องการความช่วยเหลือเพิ่มเติมเกี่ยวกับ client / สิทธิ์เข้าใช้ RMUTI Passport และ RMUTI API ให้ติดต่อ [ระบบแจ้งซ่อมด้านเทคโนโลยีสารสนเทศ](https://mis.rmuti.ac.th/oneservice) หรือ [อีเมล](mailto:mis@rmuti.ac.th)
 
 ## License
 
