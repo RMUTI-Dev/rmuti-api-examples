@@ -58,7 +58,7 @@ sequenceDiagram
 
 ## สิ่งที่ต้องเตรียม
 
-ขอข้อมูลต่อไปนี้จากผู้ดูแลระบบ RMUTI Passport (Keycloak) ของหน่วยงานคุณ
+ไปที่ **[RMUTI Developer Portal (rmuti-portal.rmuti.ac.th)](https://rmuti-portal.rmuti.ac.th)** ซึ่งเป็นเว็บไซต์สำหรับผู้พัฒนา ใช้ขอใช้งาน RMUTI API และจัดการ key ต่าง ๆ แล้วตรวจสอบข้อมูลจำเป็นต่อไปนี้ที่นั่นก่อนเริ่มพัฒนา
 
 | รายการ | คำอธิบาย |
 |---|---|
@@ -78,8 +78,9 @@ sequenceDiagram
 | [`examples/python-flask`](examples/python-flask) | Python 3.10+ / Flask | 5000 | `http://localhost:5000/callback` |
 | [`examples/php`](examples/php) | PHP 8.1+ (ext-curl) | 8000 | `http://localhost:8000/callback.php` |
 | [`examples/nextjs-nextauth`](examples/nextjs-nextauth) | Next.js (App Router) / NextAuth v4 | 3000 | `http://localhost:3000/api/auth/callback/keycloak` |
+| [`examples/service-account`](examples/service-account) | Node.js / Python / PHP (สคริปต์เดี่ยว) | – | ไม่ใช้ (ไม่มีผู้ใช้ login) — ดู [Basic auth](#เรียกจากหลังบ้านโดยไม่มีผู้ใช้-basic-auth) |
 
-ทุกตัวอย่างมีหน้าเว็บ 3 ส่วนเหมือนกัน: **Login → แสดง profile → ปุ่มเรียก RMUTI API → Logout**
+ตัวอย่าง login 4 แบบแรกมีหน้าเว็บเหมือนกัน: **Login → แสดง profile → ปุ่มเรียก RMUTI API → Logout**
 
 ### Node.js (Express)
 
@@ -158,6 +159,31 @@ Authorization: Bearer <access_token>
 - เก็บ token ไว้**ฝั่ง server** (session) เท่านั้น ไม่ส่งให้ JavaScript ฝั่ง browser — ตัวอย่าง Next.js จึงเรียก API ผ่าน route handler (`/api/rmuti-api`)
 - API จะตอบ `401` ถ้า token หมดอายุหรือไม่ถูกต้อง และ `403` ถ้าผู้ใช้/client ไม่มีสิทธิ์ใช้ endpoint นั้น
 
+## เรียกจากหลังบ้านโดยไม่มีผู้ใช้ (Basic auth)
+
+สำหรับระบบหลังบ้านที่เรียก RMUTI API เองโดยไม่มีผู้ใช้ login (เช่น cron job, งานซิงค์ข้อมูล) RMUTI API รองรับ **HTTP Basic auth** โดยตรง — **ไม่ต้องผ่าน Keycloak และไม่ต้องขอ token** เพียงแนบ username / password ที่ได้จาก [RMUTI Developer Portal](https://rmuti-portal.rmuti.ac.th) ในทุก request
+
+```http
+GET /api/v4/... HTTP/1.1
+Host: api.example.com
+Authorization: Basic base64(username:password)
+```
+
+ตัวอย่างอยู่ที่ [`examples/service-account`](examples/service-account) (`nodejs.mjs`, `python.py`, `php.php`)
+
+```bash
+cd examples/service-account
+cp .env.example .env      # แล้วแก้ค่าใน .env
+node --env-file=.env nodejs.mjs     # หรือ python python.py / php php.php
+```
+
+ข้อควรรู้:
+
+- แบบนี้ระบุตัวตนเป็น **ระบบ/หน่วยงาน** ไม่ใช่ผู้ใช้รายบุคคล จึง**ไม่มี profile ผู้ใช้** — ถ้าต้องการข้อมูลของผู้ใช้ที่ login ให้ใช้ตัวอย่างแบบ Authorization Code ด้านบน
+- username / password เทียบเท่ารหัสผ่านของระบบ: เก็บในตัวแปร environment / secret manager, ห้าม commit, ห้ามใส่ในโค้ดฝั่ง browser หรือแอปมือถือ และเปลี่ยน (rotate) ที่ Portal เมื่อสงสัยว่ารั่ว
+- ใช้ HTTPS เสมอ เพราะ Basic auth เป็นเพียง base64 ไม่ใช่การเข้ารหัส
+- API จะตอบ `401` ถ้า username/password ผิด และสิทธิ์ที่ได้ขึ้นกับ endpoint ที่ขอไว้ใน Portal
+
 ## ข้อควรระวังด้านความปลอดภัย
 
 โค้ดตัวอย่างทำสิ่งเหล่านี้ไว้ให้แล้ว ถ้านำไปดัดแปลงอย่าตัดออก:
@@ -190,12 +216,18 @@ Authorization: Bearer <access_token>
 
 ## ขอบเขตของ repository นี้
 
-- ครอบคลุมเฉพาะการ login ของ**ผู้ใช้** (Authorization Code Flow) และการนำ token ไปเรียก API
-- ไม่รวม flow แบบ machine-to-machine (`client_credentials`) และ Resource Owner Password Grant (ส่ง username/password ผ่านแอปโดยตรง) ซึ่งไม่แนะนำและไม่ใช้กับการ login ของผู้ใช้ — หากหน่วยงานของคุณมี service ที่ต้องเรียก API โดยไม่มีผู้ใช้ ให้ติดต่อผู้ดูแลเพื่อขอ client แบบ service account
+- การ login ของ**ผู้ใช้** ใช้ Authorization Code Flow และนำ token ไปเรียก API (ตัวอย่างหลัก) ส่วนการเรียกจากหลังบ้านโดยไม่มีผู้ใช้ ใช้ [Basic auth](#เรียกจากหลังบ้านโดยไม่มีผู้ใช้-basic-auth) กับ RMUTI API โดยตรง
+- ไม่รวม Resource Owner Password Grant (ส่ง username/password ของผู้ใช้ผ่านแอปโดยตรง) เพราะไม่ปลอดภัยและไม่แนะนำสำหรับการ login ของผู้ใช้
 - ตัวอย่างเหล่านี้ตั้งใจให้เล็กและอ่านง่ายเพื่อใช้เป็นแนวทาง ไม่ใช่ไลบรารีสำเร็จรูป
 
 ## การมีส่วนร่วมและติดต่อ
 
 พบปัญหาหรือมีข้อเสนอแนะ เปิด Issue หรือ Pull Request ได้ที่ repository นี้ ขั้นตอนการ contribute ของ organization ดูได้ที่ [RMUTI-Dev/.github](https://github.com/RMUTI-Dev/.github)
 
-สำหรับการขอ client / สิทธิ์เข้าใช้ RMUTI Passport และ RMUTI API ให้ติดต่อ [ระบบแจ้งซ่อมด้านเทคโนโลยีสารสนเทศ](https://mis.rmuti.ac.th/oneservice) หรือ [อีเมล](mailto:mis@rmuti.ac.th)
+การขอใช้งาน RMUTI API และจัดการ key ทำได้ที่ [RMUTI Developer Portal](https://rmuti-portal.rmuti.ac.th) หากต้องการความช่วยเหลือเพิ่มเติมเกี่ยวกับ client / สิทธิ์เข้าใช้ RMUTI Passport และ RMUTI API ให้ติดต่อ [ระบบแจ้งซ่อมด้านเทคโนโลยีสารสนเทศ](https://mis.rmuti.ac.th/oneservice) หรือ [อีเมล](mailto:mis@rmuti.ac.th)
+
+## License
+
+Copyright 2026 Rajamangala University of Technology Isan
+
+Licensed under the [Apache License, Version 2.0](LICENSE) — โค้ดตัวอย่างในนี้นำไปใช้ แก้ไข และแจกจ่ายต่อได้ โดยต้องคงประกาศลิขสิทธิ์และไฟล์ [`NOTICE`](NOTICE) ไว้ตามเงื่อนไขของ license
