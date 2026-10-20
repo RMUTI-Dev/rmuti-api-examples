@@ -21,7 +21,7 @@
   - [การตั้งค่า (Environment Variables)](#การตั้งค่า-environment-variables)
   - [Profile ที่ได้จาก Login](#profile-ที่ได้จาก-login)
   - [การเรียก RMUTI API ด้วย token](#การเรียก-rmuti-api-ด้วย-token)
-  - [เรียกจากหลังบ้านโดยไม่มีผู้ใช้ (Basic auth)](#เรียกจากหลังบ้านโดยไม่มีผู้ใช้-basic-auth)
+  - [Basic auth](#basic-auth)
   - [ข้อควรระวังด้านความปลอดภัย](#ข้อควรระวังด้านความปลอดภัย)
   - [แก้ปัญหาที่พบบ่อย](#แก้ปัญหาที่พบบ่อย)
   - [ขอบเขตของ repository นี้](#ขอบเขตของ-repository-นี้)
@@ -60,15 +60,15 @@ sequenceDiagram
 
 ## สิ่งที่ต้องเตรียม
 
-ไปที่ **[RMUTI Developer Portal (api-portal.rmuti.ac.th)](https://api-portal.rmuti.ac.th)** ซึ่งเป็นเว็บไซต์สำหรับผู้พัฒนา ใช้ขอใช้งาน RMUTI API และจัดการ key ต่าง ๆ แล้วตรวจสอบข้อมูลจำเป็นต่อไปนี้ที่นั่นก่อนเริ่มพัฒนา
+ไปที่ **[RMUTI Developer Portal (api-portal.rmuti.ac.th)](https://api-portal.rmuti.ac.th)** ซึ่งเป็นเว็บไซต์สำหรับผู้พัฒนา โดยผู้พัฒนาต้องเข้าไปขอใช้งาน RMUTI API เมื่อได้รับการอนุมัติ ผู้พัฒนาสามารถเข้าไปจัดการ key ต่าง ๆ และตรวจสอบข้อมูลจำเป็นต่อไปนี้ในระบบก่อนเริ่มพัฒนา
 
 | รายการ | คำอธิบาย |
 |---|---|
 | `KEYCLOAK_ISSUER` | URL ของ realm รูปแบบ `https://<sso-host>/realms/<realm>` |
 | `KEYCLOAK_CLIENT_ID` / `KEYCLOAK_CLIENT_SECRET` | client ชนิด **confidential** ที่เปิด *Standard flow* |
-| Valid redirect URIs | ต้องลงทะเบียน URL ของ `/callback` ทุกสภาพแวดล้อม (dev / staging / production) |
+| Valid redirect URIs | ต้องลงทะเบียน URL ของ `/callback` |
 | Valid post logout redirect URIs | ต้องลงทะเบียน URL ที่จะกลับมาหลัง logout |
-| URL ของ RMUTI API | endpoint ที่จะเรียกด้วย token และ scope/สิทธิ์ที่ต้องใช้ |
+| URL ของ RMUTI API | endpoint ที่จะเรียกด้วย token และ scope |
 
 > ค่า `sso.example.com` และ `api.example.com` ในไฟล์ตัวอย่างเป็นเพียง placeholder ต้องแทนด้วยค่าจริง
 
@@ -80,7 +80,7 @@ sequenceDiagram
 | [`examples/python-flask`](examples/python-flask) | Python 3.10+ / Flask | 5000 | `http://localhost:5000/callback` |
 | [`examples/php`](examples/php) | PHP 8.1+ (ext-curl) | 8000 | `http://localhost:8000/callback.php` |
 | [`examples/nextjs-nextauth`](examples/nextjs-nextauth) | Next.js (App Router) / NextAuth v4 | 3000 | `http://localhost:3000/api/auth/callback/keycloak` |
-| [`examples/service-account`](examples/service-account) | Node.js / Python / PHP (สคริปต์เดี่ยว) | – | ไม่ใช้ (ไม่มีผู้ใช้ login) — ดู [Basic auth](#เรียกจากหลังบ้านโดยไม่มีผู้ใช้-basic-auth) |
+| [`examples/service-account`](examples/service-account) | Node.js / Python / PHP (สคริปต์เดี่ยว) | – | สำหรับ Backend service — ดู [Basic auth](#basic-auth) |
 
 ตัวอย่าง login 4 แบบแรกมีหน้าเว็บเหมือนกัน: **Login → แสดง profile → ปุ่มเรียก RMUTI API → Logout**
 
@@ -141,7 +141,7 @@ npm run dev
 
 หลัง login สำเร็จ แอปจะได้ **profile เบื้องต้นจาก Keycloak** ผ่าน `userinfo` endpoint ทันที โดยไม่ต้องเรียก RMUTI API เพิ่ม (scope ที่ขอคือ `openid profile email`)
 
-ฟิลด์ที่ได้ขึ้นกับ client scope และ mapper ที่ผู้ดูแล Keycloak ตั้งไว้ให้ client ของคุณ — ให้ดูจากผลลัพธ์จริงที่หน้า "Login Success" ของตัวอย่าง อย่าเดาชื่อฟิลด์เอง
+ฟิลด์ที่ได้ขึ้นกับ client scope และ mapper ที่ผู้ดูแล Keycloak ตั้งไว้ให้ client ของคุณ — ให้ดูจากผลลัพธ์จริงที่หน้า "Login Success" ของตัวอย่าง
 
 ถ้าต้องการข้อมูลที่ไม่มีใน profile (เช่น ข้อมูลสังกัด/ตำแหน่ง/การศึกษา) ให้เรียก RMUTI API เพิ่มตามหัวข้อถัดไป
 
@@ -161,7 +161,7 @@ Authorization: Bearer <access_token>
 - เก็บ token ไว้**ฝั่ง server** (session) เท่านั้น ไม่ส่งให้ JavaScript ฝั่ง browser — ตัวอย่าง Next.js จึงเรียก API ผ่าน route handler (`/api/rmuti-api`)
 - API จะตอบ `401` ถ้า token หมดอายุหรือไม่ถูกต้อง และ `403` ถ้าผู้ใช้/client ไม่มีสิทธิ์ใช้ endpoint นั้น
 
-## เรียกจากหลังบ้านโดยไม่มีผู้ใช้ (Basic auth)
+## Basic auth
 
 สำหรับระบบหลังบ้านที่เรียก RMUTI API เองโดยไม่มีผู้ใช้ login (เช่น cron job, งานซิงค์ข้อมูล) RMUTI API รองรับ **HTTP Basic auth** โดยตรง — **ไม่ต้องผ่าน Keycloak และไม่ต้องขอ token** เพียงแนบ username / password ที่ได้จาก [RMUTI Developer Portal](https://api-portal.rmuti.ac.th) ในทุก request
 
@@ -218,9 +218,9 @@ node --env-file=.env nodejs.mjs     # หรือ python python.py / php php.ph
 
 ## ขอบเขตของ repository นี้
 
-- การ login ของ**ผู้ใช้** ใช้ Authorization Code Flow และนำ token ไปเรียก API (ตัวอย่างหลัก) ส่วนการเรียกจากหลังบ้านโดยไม่มีผู้ใช้ ใช้ [Basic auth](#เรียกจากหลังบ้านโดยไม่มีผู้ใช้-basic-auth) กับ RMUTI API โดยตรง
+- การ login ของ**ผู้ใช้** ใช้ Authorization Code Flow และนำ token ไปเรียก API (ตัวอย่างหลัก) ส่วนการเรียกจากหลังบ้านโดยไม่มีผู้ใช้ ใช้ [Basic auth](#basic-auth) กับ RMUTI API โดยตรง
 - ไม่รวม Resource Owner Password Grant (ส่ง username/password ของผู้ใช้ผ่านแอปโดยตรง) เพราะไม่ปลอดภัยและไม่แนะนำสำหรับการ login ของผู้ใช้
-- ตัวอย่างเหล่านี้ตั้งใจให้เล็กและอ่านง่ายเพื่อใช้เป็นแนวทาง ไม่ใช่ไลบรารีสำเร็จรูป
+- ตัวอย่างเหล่านี้ตั้งใจให้ใช้เป็นแนวทาง ไม่ใช่ไลบรารีสำเร็จรูป
 
 ## การมีส่วนร่วมและติดต่อ
 
