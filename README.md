@@ -50,7 +50,7 @@ sequenceDiagram
     App->>KC: POST /token (code + code_verifier + client secret)
     KC-->>App: access_token, refresh_token, id_token
     App->>KC: GET /userinfo (Bearer access_token)
-    KC-->>App: profile เบื้องต้น (name, email, ...)
+    KC-->>App: profile เบื้องต้น (ตาม scope ที่ได้รับ)
     Note over App,U: ผู้ใช้ login สำเร็จ — เก็บ profile + token ใน session ฝั่ง server
     App->>API: GET /... (Bearer access_token) — เมื่อต้องการข้อมูลเพิ่ม
     API-->>App: ข้อมูลจาก RMUTI API
@@ -68,6 +68,7 @@ sequenceDiagram
 | `KEYCLOAK_CLIENT_ID` / `KEYCLOAK_CLIENT_SECRET` | client ชนิด **confidential** ที่เปิด *Standard flow* |
 | Valid redirect URIs | ต้องลงทะเบียน URL ของ `/callback` |
 | Valid post logout redirect URIs | ต้องลงทะเบียน URL ที่จะกลับมาหลัง logout |
+| Scope | ค่า `scope` ที่ระบบได้รับอนุมัติ ใช้ตอน login (ดูที่หน้า **My Apps**) |
 | URL ของ RMUTI API | endpoint ที่จะเรียกด้วย token และ scope |
 
 > ค่า `sso.example.com` และ `api.example.com` ในไฟล์ตัวอย่างเป็นเพียง placeholder ต้องแทนด้วยค่าจริง
@@ -131,6 +132,7 @@ npm run dev
 | `KEYCLOAK_ISSUER` | ✅ | URL ของ realm |
 | `KEYCLOAK_CLIENT_ID` | ✅ | Client ID |
 | `KEYCLOAK_CLIENT_SECRET` | ✅ | Client secret — **ห้าม commit** และห้ามส่งไปฝั่ง browser |
+| `KEYCLOAK_SCOPE` | – | scope ที่ใช้ตอน login คั่นด้วยช่องว่าง (ค่าเริ่มต้น `openid`) — คัดลอกค่าจริงจากหน้า My Apps ใน [api-portal](https://api-portal.rmuti.ac.th) |
 | `REDIRECT_URI` | – | URL ของ `/callback` (ต้องตรงกับที่ลงทะเบียนใน Keycloak ทุกตัวอักษร) |
 | `POST_LOGOUT_REDIRECT_URI` | – | URL ที่กลับมาหลัง logout |
 | `SESSION_SECRET` | ✅ (Node, Flask) | ค่าสุ่มยาวอย่างน้อย 32 ตัวอักษร เช่น `openssl rand -base64 32` |
@@ -139,9 +141,21 @@ npm run dev
 
 ## Profile ที่ได้จาก Login
 
-หลัง login สำเร็จ แอปจะได้ **profile เบื้องต้นจาก Keycloak** ผ่าน `userinfo` endpoint ทันที โดยไม่ต้องเรียก RMUTI API เพิ่ม (scope ที่ขอคือ `openid profile email`)
+หลัง login สำเร็จ แอปจะได้ **profile เบื้องต้นจาก Keycloak** ผ่าน `userinfo` endpoint ทันที โดยไม่ต้องเรียก RMUTI API เพิ่ม
 
-ฟิลด์ที่ได้ขึ้นกับ client scope และ mapper ที่ผู้ดูแล Keycloak ตั้งไว้ให้ client ของคุณ — ให้ดูจากผลลัพธ์จริงที่หน้า "Login Success" ของตัวอย่าง
+ข้อมูลที่ได้ขึ้นกับ **scope** สองส่วน:
+
+1. **scope ที่ระบบได้รับอนุมัติ** — ตอนขอใช้งานใน [api-portal](https://api-portal.rmuti.ac.th) ผู้พัฒนาเลือกข้อมูลผู้ใช้ที่ระบบจำเป็นต้องใช้ พร้อมเหตุผล และผู้ดูแลระบบพิจารณาเป็นรายการ
+2. **scope ที่ใส่ใน `KEYCLOAK_SCOPE` ตอน login** — ต้องใส่ scope ที่ได้รับอนุมัติเอง จึงจะได้ข้อมูลนั้น
+
+```bash
+# ตัวอย่างเท่านั้น — ค่าจริงของระบบคุณดูได้ที่หน้า My Apps ใน api-portal
+KEYCLOAK_SCOPE=openid example_user_scope example:api_scope
+```
+
+- ข้อมูลพื้นฐานของบัญชีได้รับเสมอโดยไม่ต้องใส่ scope เพิ่ม
+- ขอ scope ที่ยังไม่ได้รับอนุมัติ Keycloak จะไม่ error แต่จะไม่ส่งข้อมูลนั้นมา
+- รายการ scope และ claim ที่แต่ละ scope ให้ ดูได้ที่หน้า **API Document** ใน api-portal และให้ดูผลลัพธ์จริงที่หน้า "Login Success" ของตัวอย่าง
 
 ถ้าต้องการข้อมูลที่ไม่มีใน profile (เช่น ข้อมูลสังกัด/ตำแหน่ง/การศึกษา) ให้เรียก RMUTI API เพิ่มตามหัวข้อถัดไป
 
@@ -157,6 +171,7 @@ Authorization: Bearer <access_token>
 
 ข้อควรรู้:
 
+- endpoint แต่ละเส้นต้องใช้ **scope ของ endpoint นั้น** ใน access token — ต้องใส่ scope นั้นใน `KEYCLOAK_SCOPE` ตอน login ด้วย (scope ของแต่ละ endpoint ที่ได้รับอนุมัติแสดงในหน้า My Apps)
 - **access token อายุสั้น** (ปกติราว 5 นาที ขึ้นกับการตั้งค่าของ realm) ตัวอย่างทั้ง 4 แบบจึงมีโค้ด **refresh** ด้วย refresh token ก่อนเรียก API เมื่อ token ใกล้หมดอายุ ถ้า refresh ไม่สำเร็จ (หมดอายุ/ถูกเพิกถอน) แอปจะพาผู้ใช้ login ใหม่
 - เก็บ token ไว้**ฝั่ง server** (session) เท่านั้น ไม่ส่งให้ JavaScript ฝั่ง browser — ตัวอย่าง Next.js จึงเรียก API ผ่าน route handler (`/api/rmuti-api`)
 - API จะตอบ `401` ถ้า token หมดอายุหรือไม่ถูกต้อง และ `403` ถ้าผู้ใช้/client ไม่มีสิทธิ์ใช้ endpoint นั้น
@@ -214,7 +229,8 @@ node --env-file=.env nodejs.mjs     # หรือ python python.py / php php.ph
 | `Invalid login state` | เปิด `/callback` ตรง ๆ, session หมดอายุระหว่าง login, หรือ cookie ไม่ถูกส่ง (เช่นโดเมน/พอร์ตไม่ตรงกัน) |
 | Logout แล้วขึ้น `Invalid redirect uri` | `POST_LOGOUT_REDIRECT_URI` ยังไม่ถูกเพิ่มใน *Valid post logout redirect URIs* |
 | RMUTI API ตอบ `401` | access token หมดอายุ / ไม่ได้ส่ง header `Authorization: Bearer` |
-| RMUTI API ตอบ `403` | client หรือผู้ใช้ไม่มีสิทธิ์ใช้ endpoint นั้น — ติดต่อ [ระบบแจ้งซ่อมด้านเทคโนโลยีสารสนเทศ](https://mis.rmuti.ac.th/oneservice) หรือ [อีเมล](mailto:mis@rmuti.ac.th) |
+| Login ได้ แต่ไม่ได้ข้อมูลผู้ใช้บางรายการ | ยังไม่ได้ใส่ scope ของข้อมูลนั้นใน `KEYCLOAK_SCOPE` หรือ scope นั้นยังไม่ได้รับอนุมัติ — ตรวจที่หน้า My Apps |
+| RMUTI API ตอบ `403` | ไม่ได้ใส่ scope ของ endpoint ใน `KEYCLOAK_SCOPE` (ต้อง login ใหม่หลังแก้) หรือ client/ผู้ใช้ไม่มีสิทธิ์ใช้ endpoint นั้น — ติดต่อ [ระบบแจ้งซ่อมด้านเทคโนโลยีสารสนเทศ](https://mis.rmuti.ac.th/oneservice) หรือ [อีเมล](mailto:mis@rmuti.ac.th) |
 
 ## ขอบเขตของ repository นี้
 

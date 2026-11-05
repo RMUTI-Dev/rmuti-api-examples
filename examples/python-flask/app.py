@@ -21,7 +21,8 @@ POST_LOGOUT_REDIRECT_URI = os.getenv("POST_LOGOUT_REDIRECT_URI", "http://localho
 PROFILE_API_URL = os.getenv("PROFILE_API_URL")  # ไม่บังคับ: endpoint ของ RMUTI API ที่ต้องการเรียกด้วย token
 
 OIDC = f"{KEYCLOAK_ISSUER}/protocol/openid-connect"
-SCOPE = "openid profile email"
+# scope ที่ระบบได้รับอนุมัติ (ดูได้ที่หน้า My Apps ของ api-portal) ต้องมี openid เสมอ
+SCOPE = " ".join(["openid", *[s for s in os.getenv("KEYCLOAK_SCOPE", "openid").split() if s != "openid"]])
 TIMEOUT = 10
 
 app = Flask(__name__)

@@ -11,6 +11,7 @@ const {
   POST_LOGOUT_REDIRECT_URI = 'http://localhost:3000/',
   SESSION_SECRET,
   PROFILE_API_URL, // ไม่บังคับ: endpoint ของ RMUTI API ที่ต้องการเรียกด้วย token
+  KEYCLOAK_SCOPE = 'openid', // scope ที่ระบบได้รับอนุมัติ (ดูได้ที่หน้า My Apps ของ api-portal)
   PORT = 3000,
 } = process.env;
 
@@ -19,7 +20,8 @@ for (const [name, value] of Object.entries({ KEYCLOAK_ISSUER, KEYCLOAK_CLIENT_ID
 }
 
 const OIDC = `${KEYCLOAK_ISSUER}/protocol/openid-connect`;
-const SCOPE = 'openid profile email';
+// ต้องมี openid เสมอ ส่วน scope อื่นขึ้นกับที่ระบบได้รับอนุมัติ
+const SCOPE = ['openid', ...KEYCLOAK_SCOPE.split(/\s+/).filter((s) => s && s !== 'openid')].join(' ');
 
 const app = express();
 app.use(session({

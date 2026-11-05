@@ -5,6 +5,9 @@ import KeycloakProvider from 'next-auth/providers/keycloak';
 const issuer = process.env.KEYCLOAK_ISSUER!;
 const oidc = `${issuer}/protocol/openid-connect`;
 
+// scope ที่ระบบได้รับอนุมัติ (ดูได้ที่หน้า My Apps ของ api-portal) ต้องมี openid เสมอ
+const scope = ['openid', ...(process.env.KEYCLOAK_SCOPE ?? 'openid').split(/\s+/).filter((s) => s && s !== 'openid')].join(' ');
+
 /** ใช้ refresh token ขอ access token ใหม่จาก Keycloak */
 export async function refreshAccessToken(token: JWT): Promise<JWT> {
   try {
@@ -42,7 +45,7 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.KEYCLOAK_CLIENT_ID!,
       clientSecret: process.env.KEYCLOAK_CLIENT_SECRET!,
       issuer,
-      authorization: { params: { scope: 'openid profile email' } },
+      authorization: { params: { scope } },
     }),
   ],
   session: {
